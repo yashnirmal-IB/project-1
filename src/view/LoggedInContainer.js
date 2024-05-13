@@ -5,6 +5,7 @@ import Navbar from "../components/Navbar";
 import Sidebar from "../components/Sidebar";
 import { useSelector } from "react-redux";
 import { useEffect } from "react";
+import Upload from "../components/Upload";
 
 export default function LoggedInContainer() {
   const loggedUser = useSelector((state) => state.loggedUser.value);
@@ -27,6 +28,7 @@ export default function LoggedInContainer() {
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/customers" element={<Customers />} />
+            <Route path="/upload" element={<Upload />} />
           </Routes>
           <div className="w-full py-4 flex items-center justify-center text-sm text-gray-400 mt-10">
             <p>Comapny Copyright</p>
