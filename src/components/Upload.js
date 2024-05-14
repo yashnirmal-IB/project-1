@@ -1,9 +1,7 @@
 import { LinearProgress, Button } from "@mui/material";
 import { useState, useEffect } from "react";
 import axios from "axios";
-
 const chunkSize = 100 * 1024;
-
 export default function Upload() {
   const [file, setFile] = useState(null);
   const [currentChunkIndex, setCurrentChunkIndex] = useState(null);
@@ -36,8 +34,6 @@ export default function Upload() {
     reader.onload = (e) => uploadChunk(e);
     reader.readAsDataURL(blob);
   }
-  
-
   function uploadChunk(readerEvent) {
     const data = readerEvent.target.result;
     const params = new URLSearchParams();
@@ -61,13 +57,11 @@ export default function Upload() {
       }
     });
   }
-
   useEffect(() => {
     if (currentChunkIndex !== null) {
       readAndUploadCurrentChunk();
     }
   }, [currentChunkIndex]);
-
   const handleUpload = () => {
     if (file) {
       setCurrentChunkIndex(0);
@@ -75,27 +69,29 @@ export default function Upload() {
       setProgress(0);
     }
   };
-
   return (
     <div className="flex flex-col gap-6">
-      <input type="file" onChange={handleFileChange} />
+      {" "}
+      <input type="file" onChange={handleFileChange} />{" "}
       <Button
         variant="contained"
         onClick={handleUpload}
         disabled={isUploading || !file}
         className="w-fit"
       >
-        {isUploading ? "Uploading..." : "Upload"}
-      </Button>
+        {" "}
+        {isUploading ? "Uploading..." : "Upload"}{" "}
+      </Button>{" "}
       <div className="file">
+        {" "}
         {file && (
           <>
-            <div className="name">{file.name}</div>
-            <p>{progress}%</p>
-            <LinearProgress variant="determinate" value={progress} />
+            {" "}
+            <div className="name">{file.name}</div> <p>{progress}%</p>{" "}
+            <LinearProgress variant="determinate" value={progress} />{" "}
           </>
-        )}
-      </div>
+        )}{" "}
+      </div>{" "}
     </div>
   );
 }
