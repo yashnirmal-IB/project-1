@@ -9,9 +9,22 @@ export default function Upload() {
   const [currentChunkIndex, setCurrentChunkIndex] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [chunks, setChunks] = useState(0);
+  const [chunkIndex, setChunkIndex] = useState(0);
 
   function handleFileChange(e) {
     setFile(e.target.files[0]);
+    const file = e.target.files[0];
+    const fileSize = file.size;
+    const chunksCount = Math.ceil(fileSize / chunkSize);
+    const chunksArray = [];
+    for (let i = 0; i < chunksCount; i++) {
+      const start = i * chunkSize;
+      const end = Math.min(fileSize, start + chunkSize);
+      const chunk = file.slice(start, end);
+      chunksArray.push(chunk);
+    }
+    setChunks(chunksArray);
   }
 
   function readAndUploadCurrentChunk() {
@@ -19,12 +32,11 @@ export default function Upload() {
     if (!file) {
       return;
     }
-    const from = currentChunkIndex * chunkSize;
-    const to = from + chunkSize;
-    const blob = file.slice(from, to);
+    const blob = chunks[currentChunkIndex];
     reader.onload = (e) => uploadChunk(e);
     reader.readAsDataURL(blob);
   }
+  
 
   function uploadChunk(readerEvent) {
     const data = readerEvent.target.result;
