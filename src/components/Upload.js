@@ -1,38 +1,45 @@
 import { LinearProgress, Button } from "@mui/material";
 import { useState, useEffect } from "react";
 import axios from "axios";
+import hashGenerator from "../utils/hashGeneratore";
 
-const chunkSize = 100 * 1024;
+const chunkSize = 1024 * 1024;
 
 export default function Upload() {
   const [file, setFile] = useState(null);
   const [currentChunkIndex, setCurrentChunkIndex] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [creatingChunks, setCreatingChunks] = useState(false);
 
   useEffect(() => {
+    setCreatingChunks(true);
     const openRequest = window.indexedDB.open("chunks-db", 1);
-
+  
     openRequest.onupgradeneeded = function (event) {
       const db = event.target.result;
       if (!db.objectStoreNames.contains("chunks")) {
-        db.createObjectStore("chunks", { autoIncrement: true });
+        const objectStore = db.createObjectStore("chunks", { keyPath: "id", autoIncrement: true });
+        objectStore.createIndex("fileId_chunkIndex", ["fileId", "chunkIndex"], { unique: true });
       }
     };
-
+  
     openRequest.onsuccess = function (event) {
       const db = event.target.result;
       if (file) {
         const fileSize = file.size;
         const chunksCount = Math.ceil(fileSize / chunkSize);
+        const fileId = file.name; // You can use a different value for fileId if needed
         for (let i = 0; i < chunksCount; i++) {
           const start = i * chunkSize;
           const end = Math.min(fileSize, start + chunkSize);
           const chunk = file.slice(start, end);
           const transaction = db.transaction(["chunks"], "readwrite");
           const objectStore = transaction.objectStore("chunks");
-          objectStore.add(chunk);
+          const chunkData = { fileId, chunkIndex: i, chunk };
+          objectStore.add(chunkData);
         }
+        setCreatingChunks(false);
       }
     };
   }, [file]);
@@ -46,20 +53,24 @@ export default function Upload() {
     if (!file) {
       return;
     }
-
+  
     const openRequest = window.indexedDB.open("chunks-db", 1);
-
+  
     openRequest.onsuccess = function (event) {
       const db = event.target.result;
       const transaction = db.transaction(["chunks"], "readonly");
       const objectStore = transaction.objectStore("chunks");
-      const request = objectStore.get(currentChunkIndex);
-
+      const request = objectStore.index("fileId_chunkIndex").get([file.name, currentChunkIndex]);
+  
       request.onsuccess = function (event) {
         const chunk = event.target.result;
-        const chunkBlob = new Blob([chunk]);
-        reader.onload = (e) => uploadChunk(e);
-        reader.readAsDataURL(chunkBlob);
+        if (chunk) {
+          const chunkBlob = new Blob([chunk.chunk]);
+          reader.onload = (e) => uploadChunk(e);
+          reader.readAsDataURL(chunkBlob);
+        } else {
+          console.error("Chunk not found");
+        }
       };
     };
   }
@@ -81,6 +92,20 @@ export default function Upload() {
         setCurrentChunkIndex(null);
         setIsUploading(false);
         setProgress(100);
+  
+        // Clear IndexedDB after the last chunk is uploaded
+        const openRequest = window.indexedDB.open("chunks-db", 1);
+  
+        openRequest.onsuccess = function (event) {
+          const db = event.target.result;
+          const transaction = db.transaction(["chunks"], "readwrite");
+          const objectStore = transaction.objectStore("chunks");
+          const clearRequest = objectStore.clear();
+  
+          clearRequest.onsuccess = function () {
+            console.log("IndexedDB cleared successfully");
+          };
+        };
       } else {
         setCurrentChunkIndex(currentChunkIndex + 1);
         setProgress(Math.round(((currentChunkIndex + 1) / chunks) * 100));
@@ -108,7 +133,7 @@ export default function Upload() {
       <Button
         variant="contained"
         onClick={handleUpload}
-        disabled={isUploading || !file}
+        disabled={isUploading || !file || creatingChunks}
         className="w-fit"
       >
         {isUploading ? "Uploading..." : "Upload"}
