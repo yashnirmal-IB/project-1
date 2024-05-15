@@ -31,7 +31,7 @@ export default function LoggedInContainer() {
             <Route path="/upload" element={<Upload />} />
           </Routes>
           <div className="w-full py-4 flex items-center justify-center text-sm text-gray-400 mt-10">
-            <p>Comapny Copyright</p>
+            <p>Company Copyright</p>
           </div>
         </div>
       </div>

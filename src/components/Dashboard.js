@@ -13,7 +13,6 @@ export default function Dashboard() {
   const [options3, setOptions3] = useState(null);
 
   useEffect(() => {
-    console.log(theme);
     if (theme === "dark") {
       BrandDark(Highcharts);
     } else {

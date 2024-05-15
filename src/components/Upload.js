@@ -13,6 +13,7 @@ export default function Upload() {
   const [creatingChunks, setCreatingChunks] = useState(false);
   const [hasExistingChunks, setHasExistingChunks] = useState(false);
   const [existingChunk, setExistingChunk] = useState(null);
+  const [uploadFinished, setUploadFinished] = useState(false);
 
   useEffect(() => {
     setCreatingChunks(true);
@@ -69,7 +70,6 @@ export default function Upload() {
       const clearRequest = objectStore.clear();
 
       clearRequest.onsuccess = function () {
-        console.log("IndexedDB cleared successfully");
         setHasExistingChunks(false);
       };
     };
@@ -117,12 +117,11 @@ export default function Upload() {
     params.set("currentChunkIndex", currentChunkIndex);
     params.set("totalChunks", Math.ceil(fileMetaData.size / chunkSize));
     const headers = { "Content-Type": "application/octet-stream" };
-    const url = "http://localhost:8000/upload?" + params.toString();
+    const url = "http://192.168.10.158:8000/upload?" + params.toString();
     axios.post(url, data, { headers }).then((response) => {
       const fileSize = fileMetaData.size;
       const chunks = Math.ceil(fileSize / chunkSize) - 1;
       const isLastChunk = currentChunkIndex === chunks;
-      console.log("Chunk uploaded", currentChunkIndex);
 
       // Delete the uploaded chunk from IndexedDB
       const openRequest = window.indexedDB.open("chunks-db", 1);
@@ -146,6 +145,7 @@ export default function Upload() {
       if (isLastChunk) {
         setCurrentChunkIndex(null);
         setIsUploading(false);
+        setUploadFinished(true);
         setProgress(100);
         clearIndexDb();
       } else {
@@ -157,7 +157,6 @@ export default function Upload() {
 
   useEffect(() => {
     if (currentChunkIndex !== null) {
-      console.log("Reading and uploading chunk", currentChunkIndex);
       readAndUploadCurrentChunk();
     }
   }, [currentChunkIndex]);
@@ -195,10 +194,7 @@ export default function Upload() {
     checkForExistingChunks();
   }, []);
 
-  console.log(hasExistingChunks, existingChunk);
-
   function resumeUploadHandle() {
-    console.log("resume upload");
     setIsUploading(true);
     setFileMetaData({
       name: existingChunk.fileName,
@@ -210,6 +206,7 @@ export default function Upload() {
   return (
     <div className="flex flex-col gap-6">
       <input type="file" onChange={handleFileChange} />
+      {(creatingChunks && file) && <p>Creating chunks...</p>}
       <Button
         variant="contained"
         onClick={handleUpload}
@@ -218,25 +215,35 @@ export default function Upload() {
       >
         {isUploading ? "Uploading..." : "Upload"}
       </Button>
-      <div className="file">
-        <div className="name">{fileMetaData.name}</div>
-        <p>{progress}%</p>
-        <LinearProgress variant="determinate" value={progress} />
-      </div>
-      {hasExistingChunks && (
+      {fileMetaData.name && (
+        <div className="file">
+          <div className="name">{fileMetaData.name}</div>
+          <p className="inline-block">{progress}%</p>
+          {uploadFinished && <p>[Upload finished]</p>}
+          <LinearProgress variant="determinate" value={progress} />
+        </div>
+      )}
+
+      {hasExistingChunks && !isUploading && (
         <>
-          <p>Already have existing chunks</p>
-          <Button
-            className="w-fit"
-            variant="contained"
-            disabled={!hasExistingChunks || isUploading}
-            onClick={resumeUploadHandle}
-          >
-            {isUploading ? "Uploading..." : "Resume Upload"}
-          </Button>
-          <Button className="w-fit" variant="contained" onClick={clearIndexDb}>
-            Cancel
-          </Button>
+          <p>Already have existing chunks. Want to resume the upload?</p>
+          <div className="flex items-center gap-6">
+            <Button
+              className="w-fit"
+              variant="contained"
+              disabled={!hasExistingChunks || isUploading}
+              onClick={resumeUploadHandle}
+            >
+              Resume Upload
+            </Button>
+            <Button
+              className="w-fit"
+              variant="contained"
+              onClick={clearIndexDb}
+            >
+              Cancel
+            </Button>
+          </div>
         </>
       )}
     </div>
